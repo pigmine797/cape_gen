@@ -1,8 +1,9 @@
 import os
+import sys
 import pyfiglet
 import requests
-from colorama import Fore, Style
 import time
+from colorama import Fore, Style
 
 def clear():
     os.system("clear||cls")
@@ -22,7 +23,7 @@ class colors:
 
     @staticmethod
     def error(txt):
-        print(f"{Fore.RED}[-]{Fore.RESET}{Style.BRIGHT} {txt}{Fore.RESET}{Style.NORMAL}")
+        print(f"{Fore.RED}[!]{Fore.RESET}{Style.DIM} {txt}{Fore.RESET}{Style.NORMAL}")
 
     @staticmethod
     def success(txt):
@@ -30,73 +31,91 @@ class colors:
 
 def cape_generator_menu():
     clear()
-
-    # Tela inicial com título em roxo usando pyfiglet
     banner_text = pyfiglet.figlet_format("Royalty Tools", font="slant")
     colors.banner(banner_text)
-
-    # Créditos
+    
     colors.credits("Credits: Royalty Tools Team")
-
-    # Menu de opções
     colors.menu_option("Select any option from the menu:\n")
-    print(f"{Fore.LIGHTMAGENTA_EX}1- Generate Capes\n2- Return to main menu{Fore.RESET}\n")
-
-    # Opção do usuário
+    print(f"{Fore.MAGENTA}[1]{Fore.RESET} Generate Capes")
+    print(f"{Fore.MAGENTA}[2]{Fore.RESET} Return to main menu")
     colors.menu_option("Enter your choice: ")
+    
     choice = input().strip()
-
     if choice == "1":
         generate_capes()
     elif choice == "2":
-        main_menu()  # Retorna ao menu principal
+        return
     else:
         colors.error("Invalid option. Exiting.")
         sys.exit()
 
-def generate_capes():
-    cape_gen_script_url = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/generate_capes.py"  # Substitua com a URL correta
-    login_file_url = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/userpass.txt"  # Substitua com a URL correta
+def download_code(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        colors.error(f"Failed to download file. Status code: {response.status_code}")
+        sys.exit()
 
-    # Criar diretório para resultados se não existir
+def generate_capes():
+    login_file_url = "https://raw.githubusercontent.com/pigmine797/cape_gen/main/opt.txt"  # Substitua pela URL correta
+    code_file_url = "https://raw.githubusercontent.com/pigmine797/cape_gen/main/cape_generator.py"  # Substitua pela URL correta
+
+    code_script = download_code(code_file_url)
+    login_data = download_code(login_file_url)
+
+    login_lines = login_data.splitlines()
+    
     if not os.path.exists("results/capes"):
         os.makedirs("results/capes")
 
-    # Baixar e executar o script de geração de capas
-    response = requests.get(cape_gen_script_url)
-    if response.status_code == 200:
-        exec(response.text)
-        colors.success("Cape generation script executed successfully.")
-    else:
-        colors.error(f"Failed to load cape generation script. Status code: {response.status_code}")
+    def get_current_day():
+        return time.strftime("%Y-%m-%d")
 
-    # Gerar capes
-    try:
-        response = requests.get(login_file_url)
-        response.raise_for_status()
-        logins = response.text.splitlines()
+    def load_generated_count():
+        day = get_current_day()
+        count_file = f"results/capes/count_{day}.txt"
+        if os.path.exists(count_file):
+            with open(count_file, "r") as f:
+                return int(f.read().strip())
+        else:
+            return 0
 
-        for login in logins:
-            # A função de geração de capa deve ser implementada no script que você irá baixar
-            # Assumindo que a função seja `generate_cape(login)`
-            generate_cape(login)
-            time.sleep(30)  # Cooldown de 30 segundos entre cada geração
+    def save_generated_count(count):
+        day = get_current_day()
+        count_file = f"results/capes/count_{day}.txt"
+        with open(count_file, "w") as f:
+            f.write(str(count))
 
-            # Checar se já gerou 20 capas
-            if count_generated_capes() >= 20:
-                colors.error("Limite de 20 capas geradas em um dia alcançado. Programa será encerrado.")
-                break
-    except requests.RequestException as e:
-        colors.error(f"Erro ao acessar o arquivo de logins: {e}")
+    generated_today = load_generated_count()
 
-def generate_cape(login):
-    # Implementar a função para gerar capa com base no login
-    # Substitua esta função com a lógica real para gerar a capa
-    colors.success(f"Capa gerada para {login}")
+    if generated_today >= 20:
+        colors.error("Limit of 20 capes per day reached. Exiting.")
+        sys.exit()
 
-def count_generated_capes():
-    # Contar o número de capas geradas no dia
-    return len([f for f in os.listdir("results/capes") if os.path.isfile(os.path.join("results/capes", f))])
+    colors.success("Generating capes...")
+
+    for login in login_lines:
+        email, password = login.split(":")
+        cape_filename = f"results/capes/{email}.txt"
+        
+        # Execute the cape generation script
+        exec(code_script)  # Execute the external code (ensure it’s safe)
+        
+        with open(cape_filename, "w") as f:
+            f.write(f"Login: {login}\n")
+            f.write("Generated cape content here...")  # Replace this with actual content from the script
+
+        generated_today += 1
+        save_generated_count(generated_today)
+
+        if generated_today >= 20:
+            colors.error("Limit of 20 capes per day reached. Exiting.")
+            break
+        
+        time.sleep(30)  # Cooldown of 30 seconds
+
+    colors.success("Cape generation completed.")
 
 if __name__ == "__main__":
     cape_generator_menu()
