@@ -1,121 +1,105 @@
+import random
+import string
 import os
-import sys
-import pyfiglet
-import requests
-import time
-from colorama import Fore, Style
+from colorama import init, Fore, Style
 
-def clear():
-    os.system("clear||cls")
+# Inicializa a colorama
+init(autoreset=True)
 
-class colors:
-    @staticmethod
-    def banner(txt):
-        print(f"{Fore.LIGHTMAGENTA_EX}{Style.BRIGHT}{txt}{Fore.RESET}{Style.NORMAL}")
+# Função para gerar um código aleatório de 24 caracteres
+def generate_code():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=24))
 
-    @staticmethod
-    def credits(txt):
-        print(f"{Fore.YELLOW}[!]{Fore.RESET}{Style.DIM} {txt}{Fore.RESET}{Style.NORMAL}")
+# Função para verificar se o código está na blacklist
+def is_blacklisted(code, blacklist):
+    return code in blacklist
 
-    @staticmethod
-    def menu_option(txt):
-        print(f"{Fore.GREEN}[+]{Fore.RESET}{Style.BRIGHT} {txt}{Fore.RESET}{Style.NORMAL}")
+# Função para carregar a blacklist a partir do arquivo
+def load_blacklist(filename):
+    try:
+        with open(filename, 'r') as file:
+            return set(file.read().splitlines())
+    except FileNotFoundError:
+        return set()
 
-    @staticmethod
-    def error(txt):
-        print(f"{Fore.RED}[!]{Fore.RESET}{Style.DIM} {txt}{Fore.RESET}{Style.NORMAL}")
+# Função para salvar a blacklist no arquivo
+def save_blacklist(blacklist, filename):
+    with open(filename, 'w') as file:
+        for item in blacklist:
+            file.write(f"{item}\n")
 
-    @staticmethod
-    def success(txt):
-        print(f"{Fore.GREEN}[+]{Fore.RESET}{Style.BRIGHT} {txt}{Fore.RESET}{Style.NORMAL}")
+# Função principal para gerar links e salvar no arquivo
+def generate_links(num_links, base_url, output_file, blacklist_file):
+    blacklist = load_blacklist(blacklist_file)
+    generated_links = []
 
-def cape_generator_menu():
-    clear()
-    banner_text = pyfiglet.figlet_format("Royalty Tools", font="slant")
-    colors.banner(banner_text)
+    while len(generated_links) < num_links:
+        code = generate_code()
+        if not is_blacklisted(code, blacklist):
+            link = f"{base_url}{code}"
+            generated_links.append(link)
+            blacklist.add(code)
     
-    colors.credits("Credits: Royalty Tools Team")
-    colors.menu_option("Select any option from the menu:\n")
-    print(f"{Fore.MAGENTA}[1]{Fore.RESET} Generate Capes")
-    print(f"{Fore.MAGENTA}[2]{Fore.RESET} Return to main menu")
-    colors.menu_option("Enter your choice: ")
+    with open(output_file, 'w') as file:
+        for link in generated_links:
+            file.write(f"{link}\n")
     
-    choice = input().strip()
-    if choice == "1":
-        generate_capes()
-    elif choice == "2":
-        return
-    else:
-        colors.error("Invalid option. Exiting.")
-        sys.exit()
+    save_blacklist(blacklist, blacklist_file)
+    return generated_links
 
-def download_code(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.text
-    else:
-        colors.error(f"Failed to download file. Status code: {response.status_code}")
-        sys.exit()
+# Definindo as variáveis
+base_url = "https://promos.discord.gg/"
+output_file = "links.txt"
+blacklist_file = "blacklist.txt"
 
-def generate_capes():
-    login_file_url = "https://raw.githubusercontent.com/pigmine797/cape_gen/main/opt.txt"  # Substitua pela URL correta
-    code_file_url = "https://raw.githubusercontent.com/pigmine797/cape_gen/main/cape_generator.py"  # Substitua pela URL correta
+def clear_screen():
+    # Limpa a tela de acordo com o sistema operacional
+    os.system('cls' if os.name == 'nt' else 'clear')
 
-    code_script = download_code(code_file_url)
-    login_data = download_code(login_file_url)
+def promotion_generator_menu():
+    while True:
+        # Limpa a tela
+        clear_screen()
 
-    login_lines = login_data.splitlines()
-    
-    if not os.path.exists("results/capes"):
-        os.makedirs("results/capes")
+        # Exibindo o texto em roxo
+        print(Fore.MAGENTA + pyfiglet.figlet_format("Royalty Tools", font="slant"))
+        print(Fore.YELLOW + "[!] Credits: Royalty Tools Team")
+        print(Fore.GREEN + "[+] Select any option from the menu:\n")
 
-    def get_current_day():
-        return time.strftime("%Y-%m-%d")
+        # Menu de opções
+        print(Fore.MAGENTA + "[1] 3 Months Discord Nitro")
+        print(Fore.MAGENTA + "[2] 1 Month Discord Nitro")
 
-    def load_generated_count():
-        day = get_current_day()
-        count_file = f"results/capes/count_{day}.txt"
-        if os.path.exists(count_file):
-            with open(count_file, "r") as f:
-                return int(f.read().strip())
-        else:
-            return 0
+        # Opção do usuário
+        try:
+            option = int(input("\nEnter your choice: ").strip())
+            if option not in [1, 2]:
+                raise ValueError("Invalid option.")
+        except ValueError as e:
+            print(Fore.RED + f"Error: {e}")
+            continue
 
-    def save_generated_count(count):
-        day = get_current_day()
-        count_file = f"results/capes/count_{day}.txt"
-        with open(count_file, "w") as f:
-            f.write(str(count))
+        # Perguntar ao usuário quantos links deseja gerar
+        try:
+            num_links = int(input("Quantos códigos deseja gerar? "))
+            if num_links <= 0:
+                raise ValueError("O número de códigos deve ser maior que zero.")
+        except ValueError as e:
+            print(Fore.RED + f"Entrada inválida: {e}")
+            continue
 
-    generated_today = load_generated_count()
+        # Gerando os links
+        links = generate_links(num_links, base_url, output_file, blacklist_file)
 
-    if generated_today >= 20:
-        colors.error("Limit of 20 capes per day reached. Exiting.")
-        sys.exit()
+        # Exibindo os links no terminal
+        print("\nLinks gerados:")
+        for link in links:
+            print(Fore.GREEN + link)
 
-    colors.success("Generating capes...")
-
-    for login in login_lines:
-        email, password = login.split(":")
-        cape_filename = f"results/capes/{email}.txt"
-        
-        # Execute the cape generation script
-        exec(code_script)  # Execute the external code (ensure it’s safe)
-        
-        with open(cape_filename, "w") as f:
-            f.write(f"Login: {login}\n")
-            f.write("Generated cape content here...")  # Replace this with actual content from the script
-
-        generated_today += 1
-        save_generated_count(generated_today)
-
-        if generated_today >= 20:
-            colors.error("Limit of 20 capes per day reached. Exiting.")
+        # Perguntar ao usuário se deseja sair ou gerar mais links
+        choice = input("\nDeseja gerar mais códigos? (s/n): ").strip().lower()
+        if choice != 's':
             break
-        
-        time.sleep(30)  # Cooldown of 30 seconds
-
-    colors.success("Cape generation completed.")
 
 if __name__ == "__main__":
-    cape_generator_menu()
+    promotion_generator_menu()
