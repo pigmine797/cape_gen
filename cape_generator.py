@@ -91,7 +91,8 @@ def generate_capes():
 
 def generate_cape(login):
     # Implementar a função para gerar capa com base no login
-    pass
+    # Substitua esta função com a lógica real para gerar a capa
+    colors.success(f"Capa gerada para {login}")
 
 def count_generated_capes():
     # Contar o número de capas geradas no dia
